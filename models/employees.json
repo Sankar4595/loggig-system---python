@@ -1,0 +1,14 @@
+{
+  "EMP001": {
+    "name": "Sankar",
+    "department": "Engineering",
+    "role": "Software Engineer",
+    "image": "models/faces/sankar.jpg"
+  },
+  "EMP002": {
+    "name": "Arun",
+    "department": "HR",
+    "role": "Manager",
+    "image": "models/faces/sankar1.jpg"
+  }
+}
