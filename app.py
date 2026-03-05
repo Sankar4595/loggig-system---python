@@ -12,21 +12,18 @@ CORS(app)
 reader = easyocr.Reader(['en'])
 
 def extract_vehicle_number(text_list):
-    """
-    Try to find vehicle number pattern
-    Example: TN37AB1234
-    """
+
     pattern = r'[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{3,4}'
 
     for text in text_list:
-        text = text.replace(" ", "").upper()
+        cleaned = re.sub(r'[^A-Z0-9]', '', text.upper())
 
-        match = re.search(pattern, text)
+        match = re.search(pattern, cleaned)
+
         if match:
             return match.group()
 
     return None
-
 
 @app.route('/scan-vehicle', methods=['POST'])
 def scan_vehicle():
