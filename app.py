@@ -1,17 +1,37 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 import cv2
 import numpy as np
-import pytesseract
+import easyocr
+import re
+from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-# Tesseract config
-pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+# Initialize OCR reader
+reader = easyocr.Reader(['en'])
+
+def extract_vehicle_number(text_list):
+    """
+    Try to find vehicle number pattern
+    Example: TN37AB1234
+    """
+    pattern = r'[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{3,4}'
+
+    for text in text_list:
+        text = text.replace(" ", "").upper()
+
+        match = re.search(pattern, text)
+        if match:
+            return match.group()
+
+    return None
+
 
 @app.route('/scan-vehicle', methods=['POST'])
 def scan_vehicle():
+
+    print("Request received")
 
     if 'image' not in request.files:
         return jsonify({"error": "No image uploaded"}), 400
@@ -20,21 +40,24 @@ def scan_vehicle():
 
     img_bytes = file.read()
     npimg = np.frombuffer(img_bytes, np.uint8)
-    img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
-    # Image preprocessing
-    gray = cv2.bilateralFilter(gray, 11, 17, 17)
-    edged = cv2.Canny(gray, 30, 200)
+    if frame is None:
+        return jsonify({"error": "Invalid image"}), 400
 
-    # OCR
-    text = pytesseract.image_to_string(gray, config='--psm 8')
+    print("Image received")
 
-    vehicle_number = text.strip()
+    # Run OCR
+    results = reader.readtext(frame)
 
-    if vehicle_number == "":
-        return jsonify({"vehicle_number": None})
+    detected_texts = []
+
+    for (bbox, text, prob) in results:
+        print("Detected:", text, prob)
+        detected_texts.append(text)
+
+    vehicle_number = extract_vehicle_number(detected_texts)
 
     return jsonify({
         "vehicle_number": vehicle_number
@@ -42,4 +65,4 @@ def scan_vehicle():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
